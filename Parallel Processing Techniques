@@ -1,0 +1,79 @@
+*    DATA: lv_message TYPE char20.
+**          it_fnl     TYPE TABLE OF zsd_sales_reg_fnl.
+*
+*    DATA: gv_task_name TYPE char20,
+*          gv_task_cout TYPE char3,
+**          gv_processed type i,
+*          gv_initiated TYPE i.
+*
+*    DO.
+*
+*      gv_task_cout = gv_task_cout + 1.
+*
+*      DESCRIBE TABLE tvbrkp[] LINES DATA(lv_total_records).
+*
+*      IF lv_total_records IS NOT INITIAL AND sy-index = 1.
+*        DATA(lv_records_discount) = ( lv_total_records / 5 ).
+*        DATA(lv_lines_delete) = lv_records_discount + 1.
+*
+*      ELSEIF lv_total_records < lv_lines_delete.
+*        CLEAR lv_lines_delete.
+*      ENDIF.
+*
+*      DATA(lv_tvbrkp_new) = tvbrkp[].
+*
+*      IF lv_lines_delete IS NOT INITIAL.
+*        DELETE lv_tvbrkp_new FROM lv_lines_delete.
+*      ENDIF.
+*
+*      CONCATENATE 'SALES_REG' gv_task_cout INTO gv_task_name.
+*
+*      CALL FUNCTION 'ZSD_SALES_REG_FM'
+*        STARTING NEW TASK gv_task_name
+*        DESTINATION IN GROUP 'parallel_processor'
+*        PERFORMING sub_final_data ON END OF TASK
+*        EXPORTING
+*          i_burks   = s_bukrs
+*        TABLES
+*          it_tvbrkp = tvbrkp[].
+*
+*      gv_initiated = gv_initiated + 1.
+*
+*      IF lv_lines_delete IS NOT INITIAL.
+*        DATA(lv_lines_delete_new) = lv_lines_delete - 1.
+*        DELETE tvbrkp[] FROM  1 TO lv_lines_delete_new.
+*      ELSE.
+*        CLEAR: tvbrkp[].
+*      ENDIF.
+*
+*      IF tvbrkp[] IS INITIAL.
+*        EXIT.
+*      ENDIF.
+*    ENDDO.
+*
+*    WAIT UNTIL gv_processed >= gv_initiated.3
+
+
+*FORM sub_final_data USING p_taskname.
+*  DATA: it_fnl      TYPE TABLE OF zsd_sales_reg_fnl,
+*        it_tfnl_new LIKE tfnl.
+*
+*  RECEIVE RESULTS FROM FUNCTION 'ZSD_SALES_REG_FM'
+*    TABLES
+*      et_fnl    = it_fnl[].
+*
+*  MOVE-CORRESPONDING it_fnl[] TO it_tfnl_new[].
+*  APPEND LINES OF it_tfnl_new[] TO tfnl[].
+*
+*  gv_processed = gv_processed + 1.
+*
+*ENDFORM.
+
+FM : ZSD_SALES_REG_FM
+Import 
+I_BURKS	TYPE	BUKRS
+Tables
+IT_TVBRKP	LIKE	ZSD_SALES_REG_VBRKP
+ET_FNL	LIKE	ZSD_SALES_REG_FNL
+
+pass source table and loop and fill final table ET_FNL
